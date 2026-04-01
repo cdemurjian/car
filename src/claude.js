@@ -10,6 +10,44 @@ import { relativeTime, truncate, padEnd } from './utils.js';
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const DIVIDER = '━'.repeat(42);
 
+// Cache filesystem existence checks so each path is only hit once per run.
+const _existsCache = new Map();
+function pathExists(p) {
+  if (!_existsCache.has(p)) _existsCache.set(p, existsSync(p));
+  return _existsCache.get(p);
+}
+
+// Claude Code encodes project paths as directory names by replacing '/' with '-'
+// e.g. '-home-cdemu-code-my-project' could be '/home/cdemu/code/my-project'
+// We backtrack over each '-' (treat as '/' or literal '-'), pruning branches
+// where the intermediate directory doesn't exist.
+const _decodeCache = new Map();
+function decodeProjectDir(dirName) {
+  if (_decodeCache.has(dirName)) return _decodeCache.get(dirName);
+
+  const segs = dirName.split('-').filter(Boolean);
+  const result = segs.length ? dfsDecodePath(segs, 1, [], segs[0]) : null;
+  _decodeCache.set(dirName, result);
+  return result;
+}
+
+function dfsDecodePath(segs, idx, components, current) {
+  if (idx === segs.length) {
+    const path = '/' + [...components, current].join('/');
+    return pathExists(path) ? path : null;
+  }
+  const seg = segs[idx];
+  // Option 1: '-' is '/' — only recurse if the intermediate dir exists
+  const newComponents = [...components, current];
+  const intermediate = '/' + newComponents.join('/');
+  if (pathExists(intermediate)) {
+    const r = dfsDecodePath(segs, idx + 1, newComponents, seg);
+    if (r) return r;
+  }
+  // Option 2: '-' is a literal dash
+  return dfsDecodePath(segs, idx + 1, components, current + '-' + seg);
+}
+
 // ── Session parsing ──────────────────────────────────────────────────────────
 
 function readSessionsIndex(projectDir) {
@@ -57,23 +95,25 @@ function buildSessions() {
 
   for (const projectDir of projectDirs) {
     const index = readSessionsIndex(projectDir);
-    const projectPath = index?.originalPath ?? null;
+    const projectPath = index?.originalPath ?? decodeProjectDir(basename(projectDir)) ?? null;
     const indexedIds = new Set((index?.entries ?? []).map(e => e.sessionId));
 
     // Sessions from the index (fast path)
     for (const entry of index?.entries ?? []) {
       const last = lastJsonlMessage(entry.fullPath);
+      const entryPath = entry.projectPath ?? projectPath;
       sessions.push({
         sessionId: entry.sessionId,
-        projectPath: entry.projectPath ?? projectPath,
-        projectName: basename(entry.projectPath ?? projectPath ?? projectDir),
+        projectPath: entryPath,
+        projectName: basename(entryPath ?? projectDir),
         summary: entry.summary ?? '',
         lastMessage: last?.text ?? entry.firstPrompt ?? '',
         lastRole: last?.role ?? 'user',
         lastModified: entry.modified ? new Date(entry.modified) : null,
         named: false,
         customName: null,
-        resumeCommand: buildResumeCommand(entry.projectPath ?? projectPath, entry.sessionId),
+        pathMissing: !entryPath || !pathExists(entryPath),
+        resumeCommand: buildResumeCommand(entryPath, entry.sessionId),
       });
     }
 
@@ -104,13 +144,15 @@ function buildSessions() {
         lastModified: mtime,
         named: false,
         customName: null,
+        pathMissing: !projectPath || !pathExists(projectPath),
         resumeCommand: buildResumeCommand(projectPath, sessionId),
       });
     }
   }
 
-  // Sort: most recently modified first
+  // Sort: most recently modified first; missing-path sessions sink to the bottom
   sessions.sort((a, b) => {
+    if (a.pathMissing !== b.pathMissing) return a.pathMissing ? 1 : -1;
     if (!a.lastModified) return 1;
     if (!b.lastModified) return -1;
     return b.lastModified - a.lastModified;
@@ -120,7 +162,7 @@ function buildSessions() {
 }
 
 function buildResumeCommand(projectPath, sessionId) {
-  if (projectPath && existsSync(projectPath)) {
+  if (projectPath) {
     return `cd "${projectPath}" && claude --resume ${sessionId}`;
   }
   return `claude --resume ${sessionId}`;
@@ -130,19 +172,18 @@ function buildResumeCommand(projectPath, sessionId) {
 
 function formatLine(session) {
   const time = padEnd(relativeTime(session.lastModified), 12);
-  const name = padEnd(
-    session.customName ? `★ ${session.customName}` : (session.projectName ?? 'unknown'),
-    22
-  );
+  const rawName = session.customName ? `★ ${session.customName}` : (session.projectName ?? 'unknown');
+  const name = padEnd(rawName, 22);
   const preview = truncate(`${session.lastRole}: ${session.lastMessage}`, 80);
-
-  const dimTime = chalk.dim(time);
-  const cyanName = chalk.cyan(name);
-  const whitePreview = chalk.white(preview);
 
   // Embed session ID as hidden field after null byte
   const hidden = `\x00${session.sessionId}`;
-  return `${dimTime}  ${cyanName}  ${whitePreview}${hidden}`;
+
+  if (session.pathMissing) {
+    return `${chalk.dim(time)}  ${chalk.yellow('⚠ ' + name)}  ${chalk.dim(preview)}${hidden}`;
+  }
+
+  return `${chalk.dim(time)}  ${chalk.cyan(name)}  ${chalk.white(preview)}${hidden}`;
 }
 
 function pickWithFzf(sessions) {
