@@ -1,0 +1,17 @@
+{
+  "name": "car",
+  "version": "0.1.0",
+  "description": "Jump back into your Claude Code or Codex sessions",
+  "type": "module",
+  "bin": {
+    "car": "./src/index.js"
+  },
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "date-fns": "^3.0.0",
+    "inquirer": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
