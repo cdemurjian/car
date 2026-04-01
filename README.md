@@ -40,7 +40,7 @@ A subprocess can't change the working directory of your parent shell — that's 
 ## Contributing
 
 ```bash
-git clone https://github.com/cdemundo/car
+git clone https://github.com/cdemurjian/car
 cd car
 npm install
 node src/index.js
