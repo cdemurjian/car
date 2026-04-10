@@ -8,6 +8,9 @@ export function copyToClipboard(text) {
     return r.status === 0;
   }
 
+  // No display available (e.g. SSH session) — skip silently
+  if (!process.env.WAYLAND_DISPLAY && !process.env.DISPLAY) return null;
+
   for (const [cmd, ...args] of [
     ['wl-copy'],
     ['xclip', '-selection', 'clipboard'],

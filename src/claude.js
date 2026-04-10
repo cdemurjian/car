@@ -234,6 +234,8 @@ function printResult(session) {
   const copied = copyToClipboard(session.resumeCommand);
   if (copied) {
     console.log(`  ${chalk.bold.green('✓ Copied to clipboard.')}`);
+  } else if (copied === null) {
+    console.log(`  ${chalk.dim('(No display available — copy the command above manually.)')}`);
   } else {
     console.log(`  ${chalk.yellow('⚠ Could not copy to clipboard (install xclip, xsel, or wl-copy).')}`);
   }
