@@ -16,9 +16,14 @@ $ car
 ## Install
 
 ```bash
-npm install -g car
-# or run without installing
+# Run without installing
 npx car
+
+# Or install globally
+git clone https://github.com/cdemurjian/car
+cd car
+npm install
+sudo npm install -g .
 ```
 
 ## Requirements
@@ -61,12 +66,7 @@ A subprocess can't change the working directory of your parent shell — that's 
 
 ## Contributing
 
-```bash
-git clone https://github.com/cdemurjian/car
-cd car
-npm install
-node src/index.js
-```
+After cloning and running `npm install`, use `node src/index.js` to run directly without a global install.
 
 ## License
 
