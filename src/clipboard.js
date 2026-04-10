@@ -4,16 +4,16 @@ export function copyToClipboard(text) {
   const input = Buffer.from(text);
 
   if (process.platform === 'darwin') {
-    const r = spawnSync('pbcopy', { input });
+    const r = spawnSync('pbcopy', { input, timeout: 2000 });
     return r.status === 0;
   }
 
   for (const [cmd, ...args] of [
+    ['wl-copy'],
     ['xclip', '-selection', 'clipboard'],
     ['xsel', '--clipboard', '--input'],
-    ['wl-copy'],
   ]) {
-    const r = spawnSync(cmd, args, { input });
+    const r = spawnSync(cmd, args, { input, timeout: 2000 });
     if (r.status === 0 && !r.error) return true;
   }
 
