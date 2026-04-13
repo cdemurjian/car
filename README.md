@@ -1,4 +1,4 @@
-# car — coding agent resume
+# car - coding agent resume
 
 Jump back into your Claude Code or Codex sessions with one command.
 
@@ -10,28 +10,30 @@ $ car
   Codex
 ```
 
-- **Claude Code** → fuzzy-search your session history, copy the resume command to clipboard
-- **Codex** → hands off directly to `codex resume --all`
+- **Claude Code** - fuzzy-search your session history, then copy the resume command to your clipboard
+- **Codex** - hand off directly to `codex resume --all`
 
 ## Install
 
 ```bash
-# Run without installing
-npx car
-
-# Or install globally
 git clone https://github.com/cdemurjian/car
 cd car
 npm install
-sudo npm install -g .
+npm install -g .
+```
+
+After installing, run:
+
+```bash
+car
 ```
 
 ## Requirements
 
 - Node.js 18+
-- [fzf](https://github.com/junegunn/fzf) for the Claude Code picker
-- A clipboard utility (Linux only — macOS uses `pbcopy` built-in)
-- Claude Code and/or Codex installed
+- [fzf](https://github.com/junegunn/fzf), for the Claude Code picker
+- A clipboard utility on Linux; macOS uses `pbcopy`
+- Claude Code, Codex, or both
 
 ### Installing fzf
 
@@ -56,18 +58,38 @@ sudo npm install -g .
 
 ## Usage
 
-Just run `car`. Pick your tool. Done.
+Run `car`, pick a tool, and follow the prompt.
 
-The Claude Code picker shows your sessions sorted by most recently active. Sessions whose project folder can no longer be found are marked with `⚠` and sorted to the bottom — they're still selectable but the path may be stale.
+For Claude Code, `car` reads `~/.claude/projects`, opens an `fzf` picker, and prints a shell-safe resume command like:
+
+```bash
+cd '/path/to/project' && claude --resume 'session-id'
+```
+
+It also copies that command to your clipboard when a clipboard utility is available. If no display or clipboard utility is available, it prints the command so you can run it manually.
+
+The Claude Code picker shows sessions sorted by most recently active. Sessions whose project folder can no longer be found are marked with `⚠` and sorted to the bottom. They are still selectable, but the path may be stale.
+
+For Codex, `car` runs:
+
+```bash
+codex resume --all
+```
 
 ## Why can't it cd for me?
 
-A subprocess can't change the working directory of your parent shell — that's a Unix fundamental. `car` prints the full command and copies it to your clipboard. Paste and run.
+A subprocess cannot change the working directory of your parent shell. `car` prints the full command and copies it to your clipboard so you can paste and run it.
 
 ## Contributing
 
 After cloning and running `npm install`, use `node src/index.js` to run directly without a global install.
 
+Run tests with:
+
+```bash
+npm test
+```
+
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
