@@ -3,13 +3,22 @@
   "version": "0.1.0",
   "description": "Jump back into your Claude Code or Codex sessions",
   "type": "module",
+  "license": "MIT",
   "bin": {
     "car": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
   },
   "dependencies": {
     "chalk": "^5.0.0",
     "date-fns": "^3.0.0",
-    "inquirer": "^10.0.0"
+    "inquirer": "^12.11.1"
   },
   "engines": {
     "node": ">=18"

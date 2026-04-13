@@ -1,7 +1,6 @@
-import { readdirSync, readFileSync, statSync, existsSync, createReadStream } from 'fs';
+import { readdirSync, readFileSync, statSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 import { homedir } from 'os';
-import { createInterface } from 'readline';
 import { spawnSync } from 'child_process';
 import chalk from 'chalk';
 import { copyToClipboard } from './clipboard.js';
@@ -60,6 +59,10 @@ function readSessionsIndex(projectDir) {
   }
 }
 
+function indexEntries(index) {
+  return Array.isArray(index?.entries) ? index.entries : [];
+}
+
 function lastJsonlMessage(jsonlPath) {
   // Read the JSONL file and return the last user/assistant turn
   try {
@@ -96,10 +99,11 @@ function buildSessions() {
   for (const projectDir of projectDirs) {
     const index = readSessionsIndex(projectDir);
     const projectPath = index?.originalPath ?? decodeProjectDir(basename(projectDir)) ?? null;
-    const indexedIds = new Set((index?.entries ?? []).map(e => e.sessionId));
+    const entries = indexEntries(index);
+    const indexedIds = new Set(entries.map(e => e.sessionId));
 
     // Sessions from the index (fast path)
-    for (const entry of index?.entries ?? []) {
+    for (const entry of entries) {
       const last = lastJsonlMessage(entry.fullPath);
       const entryPath = entry.projectPath ?? projectPath;
       sessions.push({
@@ -161,11 +165,18 @@ function buildSessions() {
   return sessions;
 }
 
+function shellQuote(value) {
+  const s = String(value ?? '');
+  if (s.length === 0) return "''";
+  return `'${s.replaceAll("'", "'\\''")}'`;
+}
+
 function buildResumeCommand(projectPath, sessionId) {
+  const quotedSessionId = shellQuote(sessionId);
   if (projectPath) {
-    return `cd "${projectPath}" && claude --resume ${sessionId}`;
+    return `cd ${shellQuote(projectPath)} && claude --resume ${quotedSessionId}`;
   }
-  return `claude --resume ${sessionId}`;
+  return `claude --resume ${quotedSessionId}`;
 }
 
 // ── fzf picker ───────────────────────────────────────────────────────────────
@@ -272,3 +283,9 @@ export async function runClaudePicker() {
 
   printResult(selected);
 }
+
+export const testInternals = {
+  buildResumeCommand,
+  indexEntries,
+  shellQuote,
+};
